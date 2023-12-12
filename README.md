@@ -1,8 +1,8 @@
-# wrsbmkg-mstdn
-Bot tidak Resmi WRS-BMKG yang digunakan untuk menerima Peringatan Gempa yang dirasakan, dan gempa realtime.
+# wrsbmkg-nostr
+Bot Nostr tidak Resmi WRS-BMKG yang digunakan untuk menerima Peringatan Gempa yang dirasakan, dan gempa realtime.
 
 ## Menyiapkan bot
-Pertama, siapkan modul-modul yang dibutuhkan
+Siapkan dependencies yang diperlukan
 ```
 $ npm install
 ```
@@ -14,14 +14,13 @@ $ cp .env.example .env
 
 Edit file `.env`, dan isi kolom yang dibutuhkan:
 ```
-# Alamat server mastodon. Contoh: https://mastodon.example
-SERVER_URL=
+# Alamat relay-relay. Masukkan beberapa relay dengan koma ","
+# Contoh:
+# RELAYS=wss://example1.com,wss://example2.com,wss://example3.com
+RELAYS=
 
-# Token Akses yang anda buat di https://mstdn.id/settings/applications
-ACCESS_TOKEN=
-
-# Visibility, Bisa saja "public", "unlisted", "private", atau "direct".
-VISIBILITY=unlisted
+# Private Token.
+PRIVATE_KEY=
 ```
 
 ## Menjalankan bot

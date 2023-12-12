@@ -1,46 +1,35 @@
 require("dotenv").config();
-const { login } = require("masto");
+const NostrTools = require("nostr-tools");
 const WRSBMKG = require("wrs-bmkg");
-const get = require("miniget");
 
-let masto = null;
+const pub = require("./relayHandler.js");
+let privkey = process.env.PRIVATE_KEY?.startsWith("nsec") ? NostrTools.nip19.decode(process.env.PRIVATE_KEY).data : process.env.PRIVATE_KEY;
+let pool = new NostrTools.SimplePool();
 let wrs = WRSBMKG();
-
 let posts = 0;
 
-async function post(t, etc = {}, eStr = "") {
-  //if (!(posts >= 3)) return posts++;
-  return await masto.statuses.create({
-    status: t + "\n#wrsbmkg #gempabot " + eStr,
-    visibility: process.env.VISIBILITY || "unlisted",
-    ...etc
-  });
+if (!privkey) return console.log("No private key (or nsec) was provided. Aborting.");
+
+console.log("Hello", NostrTools.getPublicKey(privkey));
+function post(t, eStr = "") {
+  let note = {
+    kind: 1,
+    content: t + "\n#wrsbmkg #gempabot #gempabumi " + eStr,
+    tags: []
+  }
+
+  note.created_at = Math.floor(Date.now() / 1000);
+  note.pubkey = NostrTools.getPublicKey(privkey);
+  note.id = NostrTools.getEventHash(note);
+  note.sig = NostrTools.getSignature(note, privkey);
+
+  const ok = NostrTools.validateEvent(note);
+  const veryOk = NostrTools.verifySignature(note);
+
+  if (ok && veryOk) pub(note);
+
+  console.log(note.content, "\n-----------------------");
 }
-
-async function makeAttachment(s, d) {
-  return await masto.mediaAttachments.create({
-    file: s,
-    description: d
-  });
-}
-
-function getShakemap(n) {
-  return new Promise(async (res, rej) => {
-    let stream = get(
-      "https://bmkg-content-inatews.storage.googleapis.com/" + n
-    );
-    stream.on("error", async (e) => {
-      stream.destroy();
-      setTimeout(async (_) =>
-        res(await getShakemap(n))
-      , 3000);
-    });
-
-    stream.on("response", (_) => res(stream));
-  });
-}
-
-async function postWarning(t, etc) {}
 
 wrs.on("error", (e) => {
   console.error(e);
@@ -49,17 +38,22 @@ wrs.on("error", (e) => {
 });
 
 wrs.on("Gempabumi", async (msg) => {
-  await post(msg.headline);
-  let text = [msg.subject, msg.description, msg.area, msg.potential, msg.instruction];
-  try {
-    let { id } = await makeAttachment(await getShakemap(msg.shakemap), "ShakeMap di Koordinat " + msg.point.coordinates);
-    await post(text.join("\n\n"), {
-      mediaIds: [id]
-    });
-  } catch (e) {
-    text.push("Shakemap: https://data.bmkg.go.id/DataMKG/TEWS/" + msg.shakemap);
-    await post(text.join("\n\n"));
-  }
+  post(msg.headline);
+
+  const img_url = `https://bmkg-content-inatews.storage.googleapis.com/${msg.eventid}`
+
+  const text = [
+    msg.subject,
+    msg.description,
+    msg.area,
+    msg.potential,
+    msg.instruction,
+   `Informasi dampak berdasarkan data observasi peralatan Acelerometer: ${img_url}.mmi.jpg`,
+   `Informasi dampak berbasis kecamatan berdasarkan data observasi peralatan Acelerometer: ${img_url}_rev/impact_list.jpg`,
+   `Sebaran peralatan Acelerometer yang digunakan: ${img_url}_rev/loc_map.png`,
+   `Hasil perhitungan PGA Max dan MMI berdasarkan data observasi peralatan Acelerometer: ${img_url}_rev/stationlist_MMI.jpg`
+  ].join("\n\n");
+  post(text);
 });
 
 wrs.on("realtime", (msg) => {
@@ -82,17 +76,10 @@ wrs.on("realtime", (msg) => {
   else if (Number(msg.properties.mag) >= 5)
     text.push("\nPeringatan: Gempa berskala M >= 5");
 
-  post(text.join("\n"), {}, "#gempaM" + Math.floor(msg.properties.mag));
+  text = text.join("\n");
+
+  post(text, "#gempaM" + Math.floor(msg.properties.mag));
 });
 
-async function Login() {
-  masto = await login({
-    url: process.env.SERVER_URL,
-    accessToken: process.env.ACCESS_TOKEN,
-  });
+wrs.startPolling();
 
-  wrs.stopPolling();
-  wrs.startPolling();
-}
-
-Login().catch(console.error);
