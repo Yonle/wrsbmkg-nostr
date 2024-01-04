@@ -12,14 +12,16 @@ if (!privkey) return console.log("No private key (or nsec) was provided. Abortin
 
 console.log("Hello", NostrTools.getPublicKey(privkey));
 function post(t, eStr = "") {
+  let hashtags = "#wrsbmkg #gempabot #gempabumi " + eStr,
   let note = {
     kind: 1,
-    content: t + "\n#wrsbmkg #gempabot #gempabumi " + eStr,
+    content: t + "\n" + hashtags,
     tags: []
   }
 
   note.created_at = Math.floor(Date.now() / 1000);
   note.pubkey = NostrTools.getPublicKey(privkey);
+  note.tags = hashtags.split(" ").map(i => ["t", i.slice(1)]);
   note.id = NostrTools.getEventHash(note);
   note.sig = NostrTools.getSignature(note, privkey);
 
