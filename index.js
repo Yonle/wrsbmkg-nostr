@@ -12,7 +12,7 @@ if (!privkey) return console.log("No private key (or nsec) was provided. Abortin
 
 console.log("Hello", NostrTools.getPublicKey(privkey));
 function post(t, eStr = "") {
-  let hashtags = "#wrsbmkg #gempabot #gempabumi " + eStr,
+  let hashtags = "#wrsbmkg #gempabot #gempabumi " + eStr;
   let note = {
     kind: 1,
     content: t + "\n" + hashtags,
